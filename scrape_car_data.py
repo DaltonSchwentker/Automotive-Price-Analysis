@@ -3,8 +3,16 @@ from bs4 import BeautifulSoup
 import time
 import csv
 import random
+import boto3
 from datetime import datetime
 from fake_useragent import UserAgent
+import io
+
+# Create an S3 client
+s3 = boto3.client('s3')
+
+
+bucket_name = 'cars-data-bucket'
 
 
 # Define pages to scrape here
@@ -82,9 +90,15 @@ for page_number in range(1, pages_to_scrape + 1):
     time.sleep(random.uniform(1, 7))  # Wait for random delay between 1 and 7 seconds
 
 
-#Write the data to a CSV file
-with open(filename, 'w', newline='', encoding="utf-8") as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(["Car Name", "Car Price", "Car Mileage", "Exterior Color", "Interior Color", "Drivetrain", "Fuel Type", "Transmission", "Engine", "VIN", "TimeStamp", "Source"])  # write the header
-    writer.writerows(all_car_data)  # write the data
-    print(f"{page_number} Page/s scraped successfully")
+# Write the data to a CSV file in memory
+output = io.StringIO()
+writer = csv.writer(output)
+writer.writerow(["Car Name", "Car Price", "Car Mileage", "Exterior Color", "Interior Color", "Drivetrain", "Fuel Type", "Transmission", "Engine", "VIN", "TimeStamp", "Source"])  # write the header
+writer.writerows(all_car_data)  # write the data
+
+csv_output = output.getvalue()
+
+# Upload the CSV data to your S3 bucket
+s3.put_object(Body=csv_output, Bucket=bucket_name, Key=filename)
+
+print(f"{page_number} Page/s scraped successfully")
