@@ -9,13 +9,26 @@ from fake_useragent import UserAgent
 import logging
 import psycopg2
 from psycopg2 import sql
-import backoff
+from uszipcode import SearchEngine
+
+# Initialize search engine
+search = SearchEngine()
+
+# Get list of all zipcodes (limited number for performance)
+all_zipcodes = search.by_city_and_state(city=None, state=None, returns=500)  # Adjust returns as needed
+
+# Extract just the ZIP code strings
+zip_code_list = [z.zipcode for z in all_zipcodes]
+
+# Randomly select a ZIP code
+selected_zip = random.choice(zip_code_list)
 
 # Initialize detailed logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Define pages to scrape
-pages_to_scrape = 10
+pages_to_scrape = 2
+
 
 ua = UserAgent()
 
@@ -47,9 +60,9 @@ def insert_into_database(data):
             INSERT INTO public.vehicle_data (
                 "CarName", "CarPrice", "CarMileage", "ExteriorColor", 
                 "InteriorColor", "Drivetrain", "FuelType", "Transmission", 
-                "Engine", "VIN", "TimeStamp", "Source"
+                "Engine", "VIN", "TimeStamp", "Source", "ZipLocation"
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
         """)
 
@@ -62,7 +75,7 @@ def insert_into_database(data):
             connection.close()
 
 def scrape_car_data(page_number):
-    url = f"https://www.cars.com/shopping/results/?makes[]=&models[]=&page={page_number}&stock_type=used&zip="
+    url = f"https://www.cars.com/shopping/results/?dealer_id=&keyword=&list_price_max=&list_price_min=&makes[]=&maximum_distance=50&mileage_max=&monthly_payment=&page={page_number}&page_size=20&sort=distance&stock_type=used&year_max=&year_min=&zip={selected_zip}"
     headers = {'User-Agent': ua.random}
 
     try:
@@ -88,12 +101,13 @@ def scrape_car_data(page_number):
 
             timestamp = datetime.now()
             scrape_source = "Cars.com"
+            zip_location = selected_zip
 
             car_data.append([
                 car_name, car_price, specs_dict.get('Mileage'), specs_dict.get('Exterior color'), 
                 specs_dict.get('Interior color'), specs_dict.get('Drivetrain'), specs_dict.get('Fuel type'), 
                 specs_dict.get('Transmission'), specs_dict.get('Engine'), specs_dict.get('VIN'), 
-                timestamp, scrape_source
+                timestamp, scrape_source, zip_location
             ])
 
             logging.debug(f"Processed car listing: {car_name}")
