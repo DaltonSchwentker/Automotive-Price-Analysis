@@ -224,7 +224,11 @@ CREATE TABLE IF NOT EXISTS cleaned_vehicle_data (
 with engine.connect() as conn:
     conn.execute(create_cleaned_table_sql)
 
-# Insert cleaned data into the new table
+existing_vins = pd.read_sql('SELECT "VIN", "TimeStamp" FROM cleaned_vehicle_data', engine)  # Note the lowercase 'vin'
+df = df.merge(existing_vins, on=['VIN', 'TimeStamp'], how='left', indicator=True)  # Note the lowercase 'vin'
+df = df[df['_merge'] == 'left_only'].drop(columns=['_merge'])
+
+# Append non-duplicate cleaned data into the new table
 df.to_sql('cleaned_vehicle_data', engine, if_exists='append', index=False)
 
 print("Data cleaning and loading complete.")

@@ -12,7 +12,7 @@ from psycopg2 import sql
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Define pages to scrape
-pages_to_scrape = 5
+pages_to_scrape = 10
 
 ua = UserAgent()
 
