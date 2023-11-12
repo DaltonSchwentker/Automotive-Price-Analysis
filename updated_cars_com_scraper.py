@@ -1,4 +1,6 @@
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import time
 import random
@@ -7,6 +9,7 @@ from fake_useragent import UserAgent
 import logging
 import psycopg2
 from psycopg2 import sql
+import backoff
 
 # Initialize detailed logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -15,6 +18,20 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 pages_to_scrape = 10
 
 ua = UserAgent()
+
+# Setup retry strategy
+retry_strategy = Retry(
+    total=3,  # Total number of retries to allow
+    status_forcelist=[429, 500, 502, 503, 504],  # Status codes to retry for
+    method_whitelist=["HEAD", "GET", "OPTIONS"],  # HTTP methods to retry
+    backoff_factor=1  # Delay factor between retry attempts
+)
+
+
+adapter = HTTPAdapter(max_retries=retry_strategy)
+http = requests.Session()
+http.mount("https://", adapter)
+http.mount("http://", adapter)
 
 def insert_into_database(data):
     try:
@@ -49,7 +66,7 @@ def scrape_car_data(page_number):
     headers = {'User-Agent': ua.random}
 
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = http.get(url, headers=headers, timeout=10)
         response.raise_for_status()
     except requests.RequestException as e:
         logging.error(f"Request to {url} failed: {e}")
