@@ -12,6 +12,8 @@ from psycopg2 import sql
 from uszipcode import SearchEngine
 from fake_useragent import UserAgent
 from dotenv import load_dotenv
+from tqdm import tqdm
+
 
 load_dotenv()
 
@@ -41,14 +43,14 @@ print(f'Writing to: {data_table}')
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Define the number of ZIP codes and pages to scrape
-NUM_ZIP_CODES = 3
-PAGES_PER_ZIP = 2
+NUM_ZIP_CODES = 23
+PAGES_PER_ZIP = 3
 
 ua = UserAgent()
 
 # Setup retry strategy
 retry_strategy = Retry(
-    total=3,
+    total=1,
     status_forcelist=[429, 500, 502, 503, 504],
     method_whitelist=["HEAD", "GET", "OPTIONS"],
     backoff_factor=1
@@ -139,11 +141,13 @@ def scrape_car_data(page_number, selected_zip):
 def main():
     all_car_data = []
 
-    for _ in range(NUM_ZIP_CODES):
+    # Wrap the outer loop with tqdm for ZIP code progress visualization
+    for selected_zip in tqdm(range(NUM_ZIP_CODES), desc="ZIP Codes Progress"):
         selected_zip = get_random_zip_code()
         logging.info(f"Scraping data for ZIP code: {selected_zip}")
 
-        for page_number in range(1, PAGES_PER_ZIP + 1):
+        # Wrap the inner loop with tqdm for page progress visualization within each ZIP code
+        for page_number in tqdm(range(1, PAGES_PER_ZIP + 1), desc=f"Pages in ZIP {selected_zip}", leave=False):
             logging.info(f"Scraping page {page_number} for ZIP code: {selected_zip}...")
             car_data = scrape_car_data(page_number, selected_zip)
             if car_data:
