@@ -63,7 +63,7 @@ http.mount("http://", adapter)
 def get_random_zip_code():
     # Efficiently fetch a random ZIP code from the database or an external source
     # Placeholder for your implementation
-    return random.choice(search.by_city_and_state(city=None, state=None, returns=500)).zipcode
+    return random.choice(search.by_city_and_state(city=None, state=None, returns=42724)).zipcode
 
 def insert_into_database(data):
     with psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST) as connection:
