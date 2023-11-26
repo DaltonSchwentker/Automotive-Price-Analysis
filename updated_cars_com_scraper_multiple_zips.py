@@ -32,18 +32,17 @@ print(DB_USER)
 print(DB_PASS)
 print(DB_HOST)
 
-
 # Define table names based on mode
 data_table = 'vehicle_data_test_env' if mode == 'test' else 'vehicle_data'
 
 print(f'Writing to: {data_table}')
 
-
 # Initialize detailed logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Define pages to scrape
-PAGES_TO_SCRAPE = 2
+# Define the number of ZIP codes and pages to scrape
+NUM_ZIP_CODES = 3
+PAGES_PER_ZIP = 2
 
 ua = UserAgent()
 
@@ -61,8 +60,6 @@ http.mount("https://", adapter)
 http.mount("http://", adapter)
 
 def get_random_zip_code():
-    # Efficiently fetch a random ZIP code from the database or an external source
-    # Placeholder for your implementation
     return random.choice(search.by_city_and_state(city=None, state=None, returns=42724)).zipcode
 
 def insert_into_database(data):
@@ -81,7 +78,6 @@ def insert_into_database(data):
             connection.commit()
 
 def fetch_car_details(car_url, headers):
-    # Fetch and parse car details from the car detail page
     try:
         car_response = http.get(car_url, headers=headers, timeout=10)
         car_response.raise_for_status()
@@ -141,20 +137,25 @@ def scrape_car_data(page_number, selected_zip):
     return car_data
 
 def main():
-    selected_zip = get_random_zip_code()
     all_car_data = []
-    for page_number in range(1, PAGES_TO_SCRAPE + 1):
-        logging.info(f"Scraping page {page_number}...")
-        car_data = scrape_car_data(page_number, selected_zip)
-        if car_data:
-            all_car_data.extend(car_data)
+
+    for _ in range(NUM_ZIP_CODES):
+        selected_zip = get_random_zip_code()
+        logging.info(f"Scraping data for ZIP code: {selected_zip}")
+
+        for page_number in range(1, PAGES_PER_ZIP + 1):
+            logging.info(f"Scraping page {page_number} for ZIP code: {selected_zip}...")
+            car_data = scrape_car_data(page_number, selected_zip)
+            if car_data:
+                all_car_data.extend(car_data)
+                time.sleep(random.uniform(1, 3))  # Random delay between pages
 
     # Batch insert data into database
     if all_car_data:
         insert_into_database(all_car_data)
         logging.info(f"All data inserted into database")
 
-    logging.info(f"{PAGES_TO_SCRAPE} Pages scraped and data inserted into database successfully.")
+    logging.info(f"Scraping completed for {NUM_ZIP_CODES} ZIP codes and {PAGES_PER_ZIP} pages each.")
 
 if __name__ == "__main__":
     main()
