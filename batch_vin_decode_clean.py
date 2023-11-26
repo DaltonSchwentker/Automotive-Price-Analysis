@@ -20,16 +20,16 @@ def create_db_engine():
     host = os.getenv('PROD_DB_HOST')
     return create_engine(f'postgresql://{user}:{password}@{host}/{dbname}')
 
-# Function to fetch VIN details
 def fetch_vin_details(df, chunk_size=50):
     url = 'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVINValuesBatch/'
     session = FuturesSession(max_workers=15)
     futures = []
     results = []
+    decoded_vins = []
 
     for i in range(0, len(df), chunk_size):
-        chunk = df[i:i+chunk_size]
-        vins = ';'.join(chunk['VIN'])
+        chunk = df[i:i + chunk_size]
+        vins = ';'.join(filter(None, chunk['VIN'].astype(str)))
         post_fields = {'format': 'json', 'data': vins}
         futures.append(session.post(url, data=post_fields))
 
@@ -41,15 +41,17 @@ def fetch_vin_details(df, chunk_size=50):
 
         try:
             data = json.loads(response.text)
-            results += parse_vin_response(data)
+            parse_results, parse_vins = parse_vin_response(data)
+            results += parse_results
+            decoded_vins += parse_vins
         except json.JSONDecodeError:
             print(f"Failed to decode JSON from response: {response.text}")
 
-    return pd.DataFrame(results)
+    return pd.DataFrame(results), decoded_vins
 
-# Function to parse the VIN response
 def parse_vin_response(data):
     results = []
+    vins = []
     for result in data['Results']:
         if 'Message' in result:
             print(f"Message from API: {result['Message']}")
@@ -61,7 +63,8 @@ def parse_vin_response(data):
                 'Year': result['ModelYear'],
                 'Trim': result['Trim']
             })
-    return results
+            vins.append(result['VIN'])
+    return results, vins
 
 # Function for cleaning and mapping data
 def clean_and_map_data(df):
@@ -169,18 +172,29 @@ def clean_and_map_data(df):
 
 # Main function
 def main():
-
     engine = create_db_engine()
 
     # Define table names based on mode
     data_table = 'vehicle_data_test_env' if mode == 'test' else 'vehicle_data'
     cleaned_data_table = 'cleaned_vehicle_data_test_env' if mode == 'test' else 'cleaned_vehicle_data'
 
-    # Fetch and clean data
-    df = pd.read_sql(f'SELECT * FROM {data_table}', engine)
-    vin_details_df = fetch_vin_details(df)
-    df = pd.merge(df, vin_details_df, on='VIN')
-    df = clean_and_map_data(df)
+    # Fetch only records where DecodeFlag is False
+    df = pd.read_sql(f'SELECT * FROM {data_table} WHERE "DecodeFlag" = false', engine)
+
+    vin_details_df, decoded_vins = fetch_vin_details(df)
+
+
+    # Debugging: Print columns of both dataframes
+    print("Columns in df:", df.columns)
+    print("Columns in vin_details_df:", vin_details_df.columns)
+
+    # Merge and clean data
+    if not vin_details_df.empty:
+        df = pd.merge(df, vin_details_df, on='VIN')
+        df = clean_and_map_data(df)
+
+        # Update DecodeFlag in the DataFrame
+        df.loc[df['VIN'].isin(decoded_vins), 'DecodeFlag'] = True
 
     # Drop the specified columns
     df.drop(columns=['CarName', 'ExteriorColor', 'InteriorColor', 'Drivetrain', 'FuelType', 'Transmission', 'Engine'], inplace=True)
@@ -191,7 +205,13 @@ def main():
     df = df[df['_merge'] == 'left_only'].drop(columns=['_merge'])
     df.to_sql(cleaned_data_table, engine, if_exists='append', index=False)
 
-    print(f"Data cleaning and loading complete loaded to: {cleaned_data_table} used data from {data_table}.")
+    # Update the DecodeFlag for decoded VINs
+    if decoded_vins:
+        update_query = f'UPDATE {data_table} SET "DecodeFlag" = true WHERE "VIN" IN ({",".join(["%s"] * len(decoded_vins))})'
+        with engine.connect() as conn:
+            conn.execute(update_query, decoded_vins)
+
+    print(f"Data cleaning and loading complete. Loaded to: {cleaned_data_table} using data from {data_table}.")
 
 if __name__ == '__main__':
     main()

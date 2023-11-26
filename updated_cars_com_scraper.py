@@ -36,7 +36,7 @@ print(DB_HOST)
 # Define table names based on mode
 data_table = 'vehicle_data_test_env' if mode == 'test' else 'vehicle_data'
 
-print(f'Writing to: {data_table})
+print(f'Writing to: {data_table}')
 
 
 # Initialize detailed logging
@@ -72,9 +72,9 @@ def insert_into_database(data):
                 INSERT INTO public.{data_table} (
                     "CarName", "CarPrice", "CarMileage", "ExteriorColor", 
                     "InteriorColor", "Drivetrain", "FuelType", "Transmission", 
-                    "Engine", "VIN", "TimeStamp", "Source", "ZipLocation"
+                    "Engine", "VIN", "TimeStamp", "Source", "ZipLocation", "DecodeFlag"
                 ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                 )
             """)
             cursor.executemany(insert_query, data)
@@ -107,12 +107,13 @@ def process_car_listing(car_listing, headers, selected_zip):
         timestamp = datetime.now()
         scrape_source = "Cars.com"
         zip_location = selected_zip
+        DecodeFlag = False
 
         return [
             car_name, car_price, specs_dict.get('Mileage'), specs_dict.get('Exterior color'), 
             specs_dict.get('Interior color'), specs_dict.get('Drivetrain'), specs_dict.get('Fuel type'), 
             specs_dict.get('Transmission'), specs_dict.get('Engine'), specs_dict.get('VIN'), 
-            timestamp, scrape_source, zip_location
+            timestamp, scrape_source, zip_location, DecodeFlag
         ]
     except Exception as e:
         logging.error(f"Error processing car listing: {e}")
