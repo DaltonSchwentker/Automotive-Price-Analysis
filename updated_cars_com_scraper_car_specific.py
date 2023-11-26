@@ -27,7 +27,7 @@ selected_zip = random.choice(zip_code_list)
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Define pages to scrape
-pages_to_scrape = 20
+pages_to_scrape = 8
 
 
 ua = UserAgent()
@@ -75,7 +75,7 @@ def insert_into_database(data):
             connection.close()
 
 def scrape_car_data(page_number):
-    url = f"https://www.cars.com/shopping/results/?dealer_id=&keyword=&list_price_max=&list_price_min=&makes[]=&maximum_distance=50&mileage_max=&monthly_payment=&page={page_number}&page_size=20&sort=distance&stock_type=used&year_max=&year_min=&zip={selected_zip}"
+    url = f"https://www.cars.com/shopping/results/?makes[]=infiniti&models[]=infiniti-qx70&page={page_number}&stock_type=used&zip="
     headers = {'User-Agent': ua.random}
 
     try:

@@ -194,36 +194,6 @@ df['Hybrid'] = df['Engine'].apply(extract_hybrid)
 # Drop the specified columns
 df.drop(columns=['CarName', 'ExteriorColor', 'InteriorColor', 'Drivetrain', 'FuelType', 'Transmission', 'Engine'], inplace=True)
 
-
-# Define the cleaned data table schema and create the table
-create_cleaned_table_sql = """
-CREATE TABLE IF NOT EXISTS cleaned_vehicle_data (
-    VIN varchar(255),
-    Make varchar(255),
-    Model varchar(255),
-    Year int,
-    Trim varchar(255),
-    CarPrice numeric,
-    CarMileage int,
-    ExteriorColorGeneral varchar(255),
-    InteriorColorGeneral varchar(255),
-    DrivetrainGeneral varchar(255),
-    FuelTypeGeneral varchar(255),
-    TransmissionGeneral varchar(255),
-    EngineSize varchar(255),
-    EngineConfiguration varchar(255),
-    FuelSystem varchar(255),
-    Turbocharged boolean,
-    Hybrid boolean,
-    TimeStamp timestamp
-);
-"""
-
-
-# Create the cleaned data table
-with engine.connect() as conn:
-    conn.execute(create_cleaned_table_sql)
-
 existing_vins = pd.read_sql('SELECT "VIN", "TimeStamp" FROM cleaned_vehicle_data', engine)  # Note the lowercase 'vin'
 df = df.merge(existing_vins, on=['VIN', 'TimeStamp'], how='left', indicator=True)  # Note the lowercase 'vin'
 df = df[df['_merge'] == 'left_only'].drop(columns=['_merge'])
