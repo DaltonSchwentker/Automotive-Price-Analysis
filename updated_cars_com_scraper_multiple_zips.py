@@ -43,7 +43,7 @@ print(f'Writing to: {data_table}')
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Define the number of ZIP codes and pages to scrape
-NUM_ZIP_CODES = 23
+NUM_ZIP_CODES = 25
 PAGES_PER_ZIP = 3
 
 ua = UserAgent()
