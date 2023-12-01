@@ -43,7 +43,7 @@ def get_model_urls(brand):
     
     return model_urls
 
-def get_maintenance_data(url_suffix):
+def get_maintenance_data(url_suffix, is_make_level=False):
     url = f"https://caredge.com{url_suffix}"
     headers = {'User-Agent': ua.random}
     data = []
@@ -63,7 +63,9 @@ def get_maintenance_data(url_suffix):
             year = cols[0].text.strip()
             major_repair_prob = cols[1].text.strip()
             annual_costs = cols[2].text.strip()
-            data.append((url_suffix.split('/')[1], url_suffix.split('/')[2], year, major_repair_prob, annual_costs))
+            brand = url_suffix.split('/')[1]
+            model = url_suffix.split('/')[2] if not is_make_level else "All Models"
+            data.append((brand, model, year, major_repair_prob, annual_costs))
 
     except requests.RequestException as e:
         logging.error(f"Request to {url} failed: {e}")
@@ -86,6 +88,13 @@ def insert_into_database(data):
 def main():
     all_data = []
     for brand in brands:
+        # Scrape make-level data
+        logging.info(f"Fetching make-level maintenance data for {brand}")
+        make_data = get_maintenance_data(f'/{brand}/maintenance', is_make_level=True)
+        if make_data:
+            all_data.extend(make_data)
+
+        # Scrape model-level data
         logging.info(f"Fetching model URLs for {brand}")
         model_urls = get_model_urls(brand)
         
